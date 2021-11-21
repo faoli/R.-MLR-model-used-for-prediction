@@ -1,0 +1,81 @@
+#EXERCISE: Multiple linear regression excersise using the R in-built dataset "state.x77"#
+
+#1) Load and declare the dataset. I can observe that is a data containing socio-economical information about the 50 states in the USA. All the variables are numerical and I don't observe any need to change the type of data.
+
+df <- state.x77
+str(df) # I check the structure of the data
+summary(df) # Some basic descriptive statistics
+
+
+typeof(df) # I check the type of dataset. I observe it is a matrix, but for the type of anaylis I want to carry out, I need it to be transformed into a data.frame, therefore I need to change it.
+df <- as.data.frame(as.matrix(df))
+typeof(df) # I verify the change of format was succesfully done.
+
+# Now I will change the names of some variables, just to make it more understanble. I change "Life Exp" into "Life.Exp" and "HS Grad" into "HS.Grad".
+
+names(df)[names(df) == "Life Exp"] <- "Life.Exp"
+names(df)[names(df) == "HS Grad"] <- "HS.Grad"
+
+modelLE1 <- lm(Life.Exp ~ Population + Income + Illiteracy + Murder + HS.Grad + Frost + Area, data = df)
+
+summary(modelLE1) #I observe the summary in order to determine the significant predictors.
+
+# Additionally I can use the GGally func to perform a visual multi-variable regression analysis.
+
+#install.packages("GGally")#
+library(GGally)
+
+ggpairs(df)
+
+# Both the "ggpairs" and the "summary" analysis coincide about the strongest relationship between these variables. The only two significant variables for explaining "Life Expectancy" as the target are both "Murder" and "HS.Grad", being "Murder" the more important of the two by a large margin. This is because in the "summary" analysis I observe that both are the closest to a 2e-16 value (excluding the intercept, of course).#
+
+#If I focus on the "ggpairs" analysis using the correlation and the scatter-plot analysis: the stronger correlation is between Murder and Life.Exp since it is the closest to 1 (or -1 if the correlation is negative like in this case). For this one is a -0.781 indicating that Murder negatively affects Life.Exp. Additionally, I confirm in the scatter plot that the relationship is descendant (negative) and the distribution is relatively normal (at least on a graphical level).#
+
+#3) Because I know that the only two significant variables to explain Life.Exp are Murder and Hs.Grad I am going to fit a new model using only these two.#
+
+modelLE2 <- lm(Life.Exp ~ Murder + HS.Grad, data = df)
+summary(modelLE2) # I confirm what I already discovered on the step above#
+
+#4) Finally, I should assess the confidence interval of the model to evaluate how confident I can be in using this model.#
+
+confint(modelLE2) # Confidence lv is at 97.5% indicating that it is a strong model.#
+
+# Model accuracy assesment: In multiple linear regression, the R2 represents the correlation coefficient between the observed values of the outcome variable (y) and the fitted (i.e., predicted) values of y. For this reason, the value of R will always be positive and will range from zero to one. R2 represents the proportion of variance, in the outcome variable y, that may be predicted by knowing the value of the x variables. An R2 value close to 1 indicates that the model explains a large portion of the variance in the outcome variable. A problem with the R2, is that, it will always increase when more variables are added to the model, even if those variables are only weakly associated with the response (James et al. 2014). A solution is to adjust the R2 by taking into account the number of predictor variables. The adjustment in the “Adjusted R Square” value in the summary output is a correction for the number of x variables included in the prediction model. Residual Standard Error (RSE), or sigma: The RSE estimate gives a measure of error of prediction. The lower the RSE, the more accurate the model (on the data in hand). The error rate can be estimated by dividing the RSE by the mean outcome variable#
+
+#5) Testing for multicolinearity#
+
+#install.packages("performance")#
+#install.packages("see")#
+#install.packages("patchwork")#
+
+library(performance)
+
+check_model(modelLE2) #It indicates low multicolinearity issues#
+
+#6) Visualisation in linear models.
+
+#install.packages("visreg")#
+
+library(visreg)
+
+visreg(modelLE2) # This on is for a typical plot that ilustrates the realtionship between the target variable and the independet variables#
+
+#install.packages("ggstatsplot")#
+
+library(ggstatsplot)
+
+ggcoefstats(modelLE2) #This one explains the results in one single plot. When the solid line does not cross the vertical dashed line, the estimates is significantly different from 0 at the 5% significance level (i.e., p-value < 0.05) furthermore, a point to the right (left) of the vertical dashed line means that there is a positive (negative) relationship between the two variables the more extreme the point, the stronger the relationship#
+
+#7) Predictions. Linear models can often be used to predict. Confidence and predicition intervals can be used to predict a new data set if I use the "predict" function. Using the same model, lets suppose that we want to predict the average Life.Exp when the Murder rate is 15 and the HS.Grad rate is 30#
+
+predict(modelLE2,
+        new = data.frame(Murder=15, HS.Grad=30),
+        interval = "confidence",
+        level = .975)
+
+predict(modelLE2,
+        new = data.frame(Murder=15, HS.Grad=30),
+        interval = "prediction",
+        level = .975)
+
+#Based on the model, it is expected that the the Life.Exp will be 68.05735 in a state where Murder is 15 and HS.Grad is 30. The difference between the confidence and prediction interval is that:a confidence interval gives the predicted value for the mean of Y for a new observation, whereas a prediction interval gives the predicted value for an individual Y for a new observation. The prediction interval is wider than the confidence interval to account for the additional uncertainty due to predicting an individual response, and not the mean, for a given value of X#
